@@ -7,13 +7,111 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Post {
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  name      String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  socialAccounts SocialAccount[]
+  posts          Post[]
+  scheduledPosts ScheduledPost[]
+
+  @@map("users")
+}
+
+model SocialAccount {
   id           String   @id @default(cuid())
-  prompt       String
-  platform     String
-  content      String
-  status       String   @default("pending") // pending | posted | failed
-  scheduledFor DateTime
-  postedAt     DateTime?
+  platform     Platform
+  accountId    String
+  username     String
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform])
+  @@map("social_accounts")
+}
+
+model Post {
+  id          String     @id @default(cuid())
+  content     String
+  platform    Platform
+  postId      String?    // Platform's post ID after posting
+  status      PostStatus @default(DRAFT)
+  mediaUrls   String[]
+  hashtags    String[]
+  engagement  Json?      // likes, comments, shares count
+  postedAt    DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("posts")
+}
+
+model ScheduledPost {
+  id             String         @id @default(cuid())
+  content        String
+  platforms      Platform[]
+  mediaUrls      String[]
+  hashtags       String[]
+  scheduledTime  DateTime
+  status         ScheduleStatus @default(PENDING)
+  jobId          String?        // Cron job ID
+  errorMessage   String?
+  retryCount     Int            @default(0)
+  maxRetries     Int            @default(3)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("scheduled_posts")
+}
+
+model ContentTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  platform    Platform
+  template    String   // AI prompt template
+  variables   String[] // Variables like {topic}, {tone}, etc.
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("content_templates")
+}
+
+enum Platform {
+  INSTAGRAM
+  LINKEDIN
+  TWITTER
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  FAILED
+}
+
+enum ScheduleStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
 }
