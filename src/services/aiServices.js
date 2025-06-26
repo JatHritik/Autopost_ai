@@ -1,9 +1,9 @@
-// const OpenAI = require('openai');
-const  GoogleGenerativeAI  = require("@google/generative-ai");
+
+const  {GoogleGenerativeAI}  = require("@google/generative-ai");
 const logger = require('../utils/logger.js');
 
-const openai = new GoogleGenerativeAI({
-  apiKey: process.env.OPENAI_API_KEY
+const geminiai = new GoogleGenerativeAI({
+  apiKey: process.env.Gemini_API_KEY
 });
 
 const PLATFORM_PROMPTS = {
@@ -45,8 +45,8 @@ Platform-specific guidelines:
 
 Always make the content engaging, authentic, and platform-appropriate.`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+      const response = await geminiai.chat.completions.create({
+        // model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
@@ -79,7 +79,7 @@ Always make the content engaging, authentic, and platform-appropriate.`;
 
   async generateHashtags(content, platform, count = 5) {
     try {
-      const response = await openai.chat.completions.create({
+      const response = await geminiai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [
           {
