@@ -19,5 +19,6 @@ router.get('/', postController.getPosts);
 router.post('/schedule', validate(schemas.schedulePost), postController.schedulePost);
 router.get('/scheduled', postController.getScheduledPosts);
 router.delete('/scheduled/:id', postController.deleteScheduledPost);
+router.put('/scheduled/:id', validate(schemas.updateScheduledPost), postController.editScheduledPost);
 
 module.exports = router;

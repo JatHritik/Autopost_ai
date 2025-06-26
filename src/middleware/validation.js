@@ -49,6 +49,15 @@ const schemas = {
     mediaUrls: Joi.array().items(Joi.string().uri()).optional(),
     hashtags: Joi.array().items(Joi.string()).optional()
   }),
+  updateScheduledPost: Joi.object({
+    content: Joi.string().optional(),
+    platforms: Joi.array().items(
+      Joi.string().valid('INSTAGRAM', 'LINKEDIN', 'TWITTER')
+    ).min(1).optional(),  
+    scheduledTime: Joi.date().iso().greater('now').optional(),
+    mediaUrls: Joi.array().items(Joi.string().uri()).optional(),
+    hashtags: Joi.array().items(Joi.string()).optional()
+  }),
 
   generateContent: Joi.object({
     prompt: Joi.string().required(),
