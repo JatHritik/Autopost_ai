@@ -1,112 +1,298 @@
-const OpenAI = require('openai');
-const logger = require('../utils/logger');
+const { PrismaClient } = require('@prisma/client');
+const instagramService = require('../services/instagramService.js');
+const linkedinService = require('../services/linkedinService.js');
+const twitterService = require('../services/twitterService.js');
+const logger = require('../utils/logger.js');
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+const prisma = new PrismaClient();
 
-const PLATFORM_PROMPTS = {
-  INSTAGRAM: {
-    professional: "Create an engaging Instagram post that's visually appealing and professional. Include relevant hashtags and keep it concise yet impactful.",
-    casual: "Write a casual, friendly Instagram post that feels authentic and relatable. Use emojis and hashtags naturally.",
-    creative: "Create a creative and artistic Instagram post that stands out. Be innovative with language and include trending hashtags."
-  },
-  LINKEDIN: {
-    professional: "Write a professional LinkedIn post that adds value to your network. Focus on insights, industry knowledge, or career advice. Keep it informative and engaging.",
-    casual: "Create a LinkedIn post that's professional yet approachable. Share experiences or lessons learned in a conversational tone.",
-    creative: "Write an innovative LinkedIn post that showcases thought leadership. Be creative while maintaining professionalism."
-  },
-  TWITTER: {
-    professional: "Create a concise, professional Twitter post (under 280 characters) that delivers value. Include relevant hashtags and make it shareable.",
-    casual: "Write a casual Twitter post that's engaging and conversational. Keep it under 280 characters with natural hashtags.",
-    creative: "Create a witty, creative Twitter post that stands out in the feed. Be clever and engaging within the character limit."
-  }
-};
-
-const LENGTH_GUIDELINES = {
-  short: "Keep it brief and to the point (1-2 sentences).",
-  medium: "Write a moderate length post (2-4 sentences).",
-  long: "Create a longer, more detailed post (4-6 sentences)."
-};
-
-class AIService {
-  async generateContent({ prompt, platform, tone = 'professional', length = 'medium' }) {
-    try {
-      const platformPrompt = PLATFORM_PROMPTS[platform]?.[tone] || PLATFORM_PROMPTS[platform]?.professional;
-      const lengthGuideline = LENGTH_GUIDELINES[length];
-
-      const systemPrompt = `${platformPrompt} ${lengthGuideline}
-
-Platform-specific guidelines:
-- Instagram: Include 3-5 relevant hashtags, use emojis appropriately
-- LinkedIn: Focus on professional value, no excessive hashtags
-- Twitter: Stay under 280 characters, use 1-2 hashtags max
-
-Always make the content engaging, authentic, and platform-appropriate.`;
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: `Create a ${platform.toLowerCase()} post about: ${prompt}`
-          }
-        ],
-        max_tokens: platform === 'TWITTER' ? 100 : 300,
-        temperature: 0.7
-      });
-
-      const generatedContent = response.choices[0].message.content.trim();
-      
-      // Platform-specific post-processing
-      if (platform === 'TWITTER' && generatedContent.length > 280) {
-        // Truncate if too long for Twitter
-        return generatedContent.substring(0, 277) + '...';
+exports.connectInstagram = async (req, res) => {
+  try {
+    const { code } = req.body;
+    
+    const tokenData = await instagramService.exchangeCodeForToken(code);
+    
+    await prisma.socialAccount.upsert({
+      where: {
+        userId_platform: {
+          userId: req.userId,
+          platform: 'INSTAGRAM'
+        }
+      },
+      update: {
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        expiresAt: tokenData.expires_at ? new Date(tokenData.expires_at * 1000) : null,
+        accountId: tokenData.user_id,
+        username: tokenData.username,
+        isActive: true
+      },
+      create: {
+        userId: req.userId,
+        platform: 'INSTAGRAM',
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        expiresAt: tokenData.expires_at ? new Date(tokenData.expires_at * 1000) : null,
+        accountId: tokenData.user_id,
+        username: tokenData.username,
+        isActive: true
       }
+    });
 
-      return generatedContent;
+    res.json({
+      success: true,
+      message: 'Instagram account connected successfully'
+    });
 
-    } catch (error) {
-      logger.error('AI content generation error:', error);
-      throw new Error('Failed to generate content');
-    }
+  } catch (error) {
+    logger.error('Instagram connection error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to connect Instagram account'
+    });
   }
+};
 
-  async generateHashtags(content, platform, count = 5) {
-    try {
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: `Generate ${count} relevant hashtags for ${platform} based on the given content. Return only the hashtags separated by spaces, each starting with #.`
-          },
-          {
-            role: "user",
-            content: content
+exports.connectLinkedIn = async (req, res) => {
+  try {
+    const { code } = req.body;
+    
+    const tokenData = await linkedinService.exchangeCodeForToken(code);
+    const profile = await linkedinService.getProfile(tokenData.access_token);
+    
+    await prisma.socialAccount.upsert({
+      where: {
+        userId_platform: {
+          userId: req.userId,
+          platform: 'LINKEDIN'
+        }
+      },
+      update: {
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        expiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
+        accountId: profile.id,
+        username: profile.localizedFirstName + ' ' + profile.localizedLastName,
+        isActive: true
+      },
+      create: {
+        userId: req.userId,
+        platform: 'LINKEDIN',
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        expiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
+        accountId: profile.id,
+        username: profile.localizedFirstName + ' ' + profile.localizedLastName,
+        isActive: true
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'LinkedIn account connected successfully'
+    });
+
+  } catch (error) {
+    logger.error('LinkedIn connection error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to connect LinkedIn account'
+    });
+  }
+};
+
+exports.connectTwitter = async (req, res) => {
+  try {
+    const { oauth_token, oauth_verifier } = req.body;
+    
+    const tokenData = await twitterService.exchangeCodeForToken(oauth_token, oauth_verifier);
+    
+    await prisma.socialAccount.upsert({
+      where: {
+        userId_platform: {
+          userId: req.userId,
+          platform: 'TWITTER'
+        }
+      },
+      update: {
+        accessToken: tokenData.oauth_token,
+        refreshToken: tokenData.oauth_token_secret,
+        accountId: tokenData.user_id,
+        username: tokenData.screen_name,
+        isActive: true
+      },
+      create: {
+        userId: req.userId,
+        platform: 'TWITTER',
+        accessToken: tokenData.oauth_token,
+        refreshToken: tokenData.oauth_token_secret,
+        accountId: tokenData.user_id,
+        username: tokenData.screen_name,
+        isActive: true
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Twitter account connected successfully'
+    });
+
+  } catch (error) {
+    logger.error('Twitter connection error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to connect Twitter account'
+    });
+  }
+};
+
+exports.getSocialAccounts = async (req, res) => {
+  try {
+    const socialAccounts = await prisma.socialAccount.findMany({
+      where: { userId: req.userId },
+      select: {
+        id: true,
+        platform: true,
+        username: true,
+        isActive: true,
+        createdAt: true
+      }
+    });
+
+    res.json({
+      success: true,
+      data: { socialAccounts }
+    });
+
+  } catch (error) {
+    logger.error('Get social accounts error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch social accounts'
+    });
+  }
+};
+
+exports.disconnectAccount = async (req, res) => {
+  try {
+    const { platform } = req.params;
+
+    await prisma.socialAccount.updateMany({
+      where: {
+        userId: req.userId,
+        platform: platform.toUpperCase()
+      },
+      data: {
+        isActive: false
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `${platform} account disconnected successfully`
+    });
+
+  } catch (error) {
+    logger.error('Disconnect account error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to disconnect account'
+    });
+  }
+};
+
+exports.publishNow = async (req, res) => {
+  try {
+    const { content, platforms, mediaUrls = [] } = req.body;
+
+    const results = [];
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      include: { socialAccounts: true }
+    });
+
+    for (const platform of platforms) {
+      try {
+        const socialAccount = user.socialAccounts.find(
+          acc => acc.platform === platform && acc.isActive
+        );
+
+        if (!socialAccount) {
+          results.push({
+            platform,
+            success: false,
+            error: 'Account not connected'
+          });
+          continue;
+        }
+
+        let postResult;
+        
+        switch (platform) {
+          case 'INSTAGRAM':
+            postResult = await instagramService.createPost({
+              content,
+              mediaUrls,
+              accessToken: socialAccount.accessToken
+            });
+            break;
+            
+          case 'LINKEDIN':
+            postResult = await linkedinService.createPost({
+              content,
+              mediaUrls,
+              accessToken: socialAccount.accessToken
+            });
+            break;
+            
+          case 'TWITTER':
+            postResult = await twitterService.createPost({
+              content,
+              mediaUrls,
+              accessToken: socialAccount.accessToken
+            });
+            break;
+        }
+
+        results.push({
+          platform,
+          success: true,
+          postId: postResult.id
+        });
+
+        // Save post record
+        await prisma.post.create({
+          data: {
+            content,
+            platform,
+            postId: postResult.id,
+            status: 'PUBLISHED',
+            mediaUrls,
+            postedAt: new Date(),
+            userId: req.userId
           }
-        ],
-        max_tokens: 100,
-        temperature: 0.5
-      });
+        });
 
-      const hashtags = response.choices[0].message.content
-        .trim()
-        .split(/\s+/)
-        .filter(tag => tag.startsWith('#'))
-        .slice(0, count);
-
-      return hashtags;
-
-    } catch (error) {
-      logger.error('Hashtag generation error:', error);
-      return [];
+      } catch (error) {
+        results.push({
+          platform,
+          success: false,
+          error: error.message
+        });
+      }
     }
-  }
-}
 
-module.exports = new AIService();
+    res.json({
+      success: true,
+      message: 'Posts published',
+      data: { results }
+    });
+
+  } catch (error) {
+    logger.error('Publish now error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to publish posts'
+    });
+  }
+};

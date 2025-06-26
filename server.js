@@ -1,7 +1,7 @@
 require('dotenv').config();
-const app = require('./src/app');
-const logger = require('./src/utils/logger');
-const schedulerService = require('./src/services/schedulerService');
+const app = require('./src/app.js');
+const logger = require('./src/utils/logger.js');
+const schedulerService = require('./src/services/schedulerService.js');
 
 const PORT = process.env.PORT || 3000;
 

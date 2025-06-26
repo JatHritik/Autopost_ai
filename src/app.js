@@ -1,12 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const logger = require('./utils/logger');
+const logger = require('./utils/logger.js');
 
 // Routes
-const authRoutes = require('./routes/auth');
-const postRoutes = require('./routes/posts');
-const socialRoutes = require('./routes/social');
+const authRoutes = require('./routes/auth.js');
+const postRoutes = require('./routes/posts.js');
+const socialRoutes = require('./routes/socials.js');
 
 const app = express();
 

@@ -1,7 +1,7 @@
 const express = require('express');
-const socialController = require('../controllers/socialController');
-const auth = require('../middleware/auth');
-const { validate, schemas } = require('../middleware/validation');
+const socialController = require('../controllers/socialController.js');
+const auth = require('../middleware/auth.js');
+const { validate, schemas } = require('../middleware/validation.js');
 
 const router = express.Router();
 

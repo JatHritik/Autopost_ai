@@ -1,7 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
-const aiService = require('../services/aiService');
-const schedulerService = require('../services/schedulerService');
-const logger = require('../utils/logger');
+const aiService = require('../services/aiServices.js');
+const schedulerService = require('../services/schedulerService.js');
+const logger = require('../utils/logger.js');
 
 const prisma = new PrismaClient();
 
