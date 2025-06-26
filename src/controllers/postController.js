@@ -1,9 +1,10 @@
 const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 const aiService = require('../services/aiServices.js');
 const schedulerService = require('../services/schedulerService.js');
 const logger = require('../utils/logger.js');
 
-const prisma = new PrismaClient();
+
 
 exports.generateContent = async (req, res) => {
   try {
@@ -234,7 +235,6 @@ exports.deleteScheduledPost = async (req, res) => {
   }
 };
 
-
 exports.getPosts = async (req, res) => {
   try {
     const { page = 1, limit = 10, platform, status } = req.query;
@@ -276,6 +276,38 @@ exports.getPosts = async (req, res) => {
     });
   }
 };
+
+exports.getpostdetail = async (req,res) =>{
+  try {
+    const { id } = req.params;
+
+    const post = await prisma.post.findFirst({
+      where: {
+        id,
+        userId: req.userId
+      }
+    });
+
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: 'Post not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: { post }
+    });
+
+  } catch (error) {
+    logger.error('Get post detail error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch post details'
+    });
+  }
+}
 
 exports.deletePublishedPost = async (req, res) => {
   try {

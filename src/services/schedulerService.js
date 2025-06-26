@@ -1,11 +1,12 @@
 const cron = require('node-cron');
 const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 const instagramService = require('./instagramService.js');
 const linkedinService = require('./linkedinService.js');
 const twitterService = require('./twitterService.js');
 const logger = require('../utils/logger.js');
 
-const prisma = new PrismaClient();
+
 
 class SchedulerService {
   constructor() {

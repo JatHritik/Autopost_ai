@@ -1,10 +1,11 @@
 const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 const instagramService = require('../services/instagramService.js');
 const linkedinService = require('../services/linkedinService.js');
 const twitterService = require('../services/twitterService.js');
 const logger = require('../utils/logger.js');
 
-const prisma = new PrismaClient();
+
 
 exports.connectInstagram = async (req, res) => {
   try {
