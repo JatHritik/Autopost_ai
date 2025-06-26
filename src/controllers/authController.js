@@ -12,7 +12,8 @@ const generateToken = (userId) => {
 
 exports.register = async (req, res) => {
   try {
-    const { email, username, password, confirmPassword ,   name } = req.body;
+    const { email, username, password, name } = req.body;
+
 
     // Check if user exists
     const existingUser = await prisma.user.findFirst({
@@ -37,7 +38,6 @@ exports.register = async (req, res) => {
         email,
         username,
         password: hashedPassword,
-        confirmPassword: hashedPassword, // Store hashed password for confirmPassword
         name
       },
       select: {
@@ -49,11 +49,6 @@ exports.register = async (req, res) => {
       }
     });
 
-if(password !== confirmPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'Passwords do not match'
-      });}
 
     const token = generateToken(user.id);
 
@@ -85,7 +80,7 @@ exports.login = async (req, res) => {
         ]
       }
     });
-
+    // Check if user exists
     if (!user) {
       return res.status(401).json({
         success: false,
